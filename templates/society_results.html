@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Society Results • A Pretty Good Society{% endblock %}
+
+{% block content %}
+  <section>
+    <div class="container">
+      <div class="section-header">Society Results by Season &amp; Tier</div>
+
+      {% for season in seasons_sorted %}
+        <div style="margin: 2rem 0;">
+          <h2 style="color:#27ae60;">Season {{ season }}</h2>
+
+          {% set tiers = summary[season].keys() | sort %}
+          {% for tier in ["1Premier", "2Championship", "3League One", "zzNon-Discord"] %}
+            <h3 style="margin-top:1rem;">{{ tier }}</h3>
+            {% if tier in tiers %}
+              <div class="table-responsive" style="max-width:800px; margin-bottom:2rem;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Event ID</th>
+                      <th>Date</th>
+                      <th>Winner</th>
+                      <th>Best Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for ev in summary[season][tier] %}
+                      <tr>
+                        <td>
+                          <a href="{{ url_for('show_event', event_id=ev.event_id) }}">
+                            {{ ev.event_id }}
+                          </a>
+                        </td>
+                        <td>{{ ev.event_date }}</td>
+                        <td>{{ ev.winner }}</td>
+                        <td>{{ ev.best_score }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <p style="font-style:italic; color:#555;">
+                No events recorded in {{ tier }} this season.
+              </p>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

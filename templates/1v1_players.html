@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}1v1 Players • A Pretty Good Society{% endblock %}
+{% block content %}
+<section>
+  <div class="container">
+    <div class="section-header">1v1 League Players</div>
+    <div class="table-responsive" style="max-width:600px; margin:0 auto;">
+      <table>
+        <thead><tr><th>Player</th><th>Conference</th></tr></thead>
+        <tbody>
+          {% for p in players %}
+            <tr>
+              <td>
+                <a href="{{ url_for('player_page_1v1', pid=p.player_id) }}">
+                  {{ p.player_name }}
+                </a>
+              </td>
+              <td>{{ p.conference }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}2v2 Leaderboard – {{ selected_conf }} • A Pretty Good Society{% endblock %}
+
+{% block content %}
+<section>
+  <div class="container">
+
+    <!-- ─── Conference Selector ─────────────────────────── -->
+    <div style="text-align:center; margin-bottom:1rem;">
+      {% for c in conferences %}
+        {% if c == selected_conf %}
+          <span style="
+            display:inline-block;
+            margin:0 0.5rem;
+            padding:0.25rem 0.75rem;
+            background:#27ae60;
+            color:#fff;
+            border-radius:4px;
+          ">
+            {{ c }}
+          </span>
+        {% else %}
+          <a href="{{ url_for('leaderboard_2v2', conf_name=c) }}"
+             style="
+               display:inline-block;
+               margin:0 0.5rem;
+               padding:0.25rem 0.75rem;
+               background:#ecf0f1;
+               color:#333;
+               border-radius:4px;
+               text-decoration:none;
+             ">
+            {{ c }}
+          </a>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="section-header">
+      2v2 League Leaderboard – {{ selected_conf }} Conference
+    </div>
+
+    <div class="table-responsive" style="max-width:800px; margin:0 auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Team</th>
+            <th>Wins</th>
+            <th>Losses</th>
+            <th>Matches</th>
+            <th>Pt Diff</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in leaderboard %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>
+                <a href="{{ url_for('team_page_2v2', team_id=row.team_id) }}">
+                  {{ row.team_name }}
+                </a>
+              </td>
+              <td>{{ row.wins }}</td>
+              <td>{{ row.losses }}</td>
+              <td>{{ row.matches_played }}</td>
+              <td>{{ row.point_diff }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</section>
+{% endblock %}

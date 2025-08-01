@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ team.team_name }} • 2v2 League • A Pretty Good Society{% endblock %}
+
+{% block content %}
+<section>
+  <div class="container">
+    <div class="section-header">Team: {{ team.team_name }}</div>
+    <p><strong>Conference:</strong> {{ team.conference }}</p>
+    <p><strong>Players:</strong> {{ team.players[0] }}, {{ team.players[1] }}</p>
+
+    <h2 style="margin-top:2rem; color:#27ae60;">Recent Matches</h2>
+    {% if matches %}
+      <div class="table-responsive" style="max-width:800px; margin:0 auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Phase</th>
+              <th>Opponent</th>
+              <th>Result</th>
+              <th>Point Diff</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in matches %}
+              <tr>
+                <td>{{ m.date }}</td>
+                <td>{{ m.phase }}</td>
+                <td>
+                  {% if m.winner_id == team_id %}
+                    <a href="{{ url_for('team_page_2v2', team_id=m.loser_id) }}">
+                      {{ m.loser_name }}
+                    </a>
+                  {% else %}
+                    <a href="{{ url_for('team_page_2v2', team_id=m.winner_id) }}">
+                      {{ m.winner_name }}
+                    </a>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if m.winner_id == team_id %}
+                    Win
+                  {% else %}
+                    Loss
+                  {% endif %}
+                </td>
+                <td>{{ m.point_diff }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p>No matches recorded for this team yet.</p>
+    {% endif %}
+
+    <p style="text-align:center; margin-top:2rem;">
+      <a href="{{ url_for('teams_2v2') }}" class="btn">
+        ← Back to Teams
+      </a>
+    </p>
+  </div>
+</section>
+{% endblock %}

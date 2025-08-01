@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Season {{ season_id }} • {{ tier_name }} • A Pretty Good Society{% endblock %}
+
+{% block content %}
+  <section>
+    <div class="container">
+      <div class="section-header">
+        Season {{ season_id }} – {{ tier_name }} Tier
+      </div>
+
+      {% if event_summaries %}
+        <div class="table-responsive" style="max-width:800px; margin: 0 auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Event ID</th>
+                <th>Date</th>
+                <th>Winner</th>
+                <th>Best Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for ev in event_summaries %}
+                <tr>
+                  <td>
+                    <a href="{{ url_for('show_event', event_id=ev.event_id) }}">
+                      {{ ev.event_id }}
+                    </a>
+                  </td>
+                  <td>{{ ev.event_date }}</td>
+                  <td>{{ ev.winner }}</td>
+                  <td>{{ ev.best_score }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="text-align:center; font-style:italic; color:#555; margin-top:2rem;">
+          There are no events recorded for the {{ tier_name }} tier in Season {{ season_id }} yet.
+        </p>
+      {% endif %}
+
+      <p style="text-align:center; margin-top:2rem;">
+        <a href="{{ url_for('society_season_overview', season_id=season_id) }}" class="btn">
+          ← Back to Season {{ season_id }} Overview
+        </a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

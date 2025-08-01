@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Society Leaderboard – Season {{ selected_season }} • A Pretty Good Society{% endblock %}
+
+{% block content %}
+  <section>
+    <div class="container">
+
+  <!-- ─── Season Selector ─────────────────────────────────────── -->
+  <div style="text-align:center; margin-bottom:1rem;">
+    {% for s in seasons_sorted %}
+      {% if s == selected_season %}
+        <span style="display:inline-block;
+                     margin:0 0.5rem; padding:0.25rem 0.75rem;
+                     background:#ddd; color:#333; border-radius:4px;">
+          Season {{ s }}
+        </span>
+      {% else %}
+        <a href="{{ url_for('show_leaderboard', season_id=s) }}"
+           style="display:inline-block;
+                  margin:0 0.5rem; padding:0.25rem 0.75rem;
+                  background:#ecf0f1; color:#333; border-radius:4px;
+                  text-decoration:none;">
+          Season {{ s }}
+        </a>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <!-- ─── Tier Selector ───────────────────────────────────────── -->
+  {% if seasons_sorted %}
+    <div style="text-align:center; margin-bottom:1.5rem;">
+      {% for t in tiers_present %}
+        {% if t == selected_tier %}
+          <span style="display:inline-block;
+                       margin:0 0.5rem; padding:0.25rem 0.75rem;
+                       background:#27ae60; color:#fff; border-radius:4px;">
+            {{ t }}
+          </span>
+        {% else %}
+          <a href="{{ url_for('show_leaderboard_tier',
+                              season_id=selected_season,
+                              tier_name=t) }}"
+             style="display:inline-block;
+                    margin:0 0.5rem; padding:0.25rem 0.75rem;
+                    background:#ecf0f1; color:#333; border-radius:4px;
+                    text-decoration:none;">
+            {{ t }}
+          </a>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% endif %}
+
+
+      <div class="section-header">
+        Society Leaderboard – Season {{ selected_season }}
+      </div>
+
+      <div class="table-responsive">
+        <table id="leaderboardTable">
+          <thead>
+            <tr>
+              <th data-type="number">Rank</th>
+              <th data-type="text">Player</th>
+              <th data-type="number">Points</th>
+              <th data-type="number">Wins</th>
+              <th data-type="number">Podiums</th>
+              <th data-type="number">Top 10s</th>
+              <th data-type="number">Events Played</th>
+              <th data-type="number">Pretty Rating</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in leaderboard %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>
+                  <a href="{{ url_for('show_player', pid=row.player_id) }}">
+                    {{ row.player_name }}
+                  </a>
+                </td>
+                <td>{{ row.points }}</td>
+                <td>{{ row.wins }}</td>
+                <td>{{ row.podiums }}</td>
+                <td>{{ row.top10s }}</td>
+                <td>{{ row.events_played }}</td>
+                <td>{{ row.prettyrating }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── JavaScript for Table Sorting ─────────── -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      const table = document.getElementById("leaderboardTable");
+      const headers = table.querySelectorAll("th");
+      let sortColumn = null;     // which column is currently sorted
+      let sortAscending = true;  // true=ascending, false=descending
+
+      headers.forEach((header, index) => {
+        header.style.cursor = "pointer";
+        header.addEventListener("click", () => {
+          const type = header.getAttribute("data-type") || "text";
+          sortTable(table, index, type);
+        });
+      });
+
+      /**
+       * sortTable: Sorts the given <table> by the specified column index.
+       * @param {HTMLTableElement} tableEl
+       * @param {number} columnIndex
+       * @param {"number"|"text"} type
+       */
+      function sortTable(tableEl, columnIndex, type) {
+        const tbody = tableEl.tBodies[0];
+        // Convert HTMLCollection (live) into a real array, so we can sort
+        const rows = Array.from(tbody.rows);
+
+        // Determine if we are toggling sort on the same column
+        if (sortColumn === columnIndex) {
+          // Flip ascending/descending
+          sortAscending = !sortAscending;
+        } else {
+          // Starting sort on a new column
+          sortColumn = columnIndex;
+          sortAscending = true;
+        }
+
+        // Define comparison function
+        const compare = (rowA, rowB) => {
+          const cellA = rowA.cells[columnIndex].textContent.trim();
+          const cellB = rowB.cells[columnIndex].textContent.trim();
+
+          if (type === "number") {
+            // Parse floats (if blank or non‐numeric, treat as 0)
+            const numA = parseFloat(cellA) || 0;
+            const numB = parseFloat(cellB) || 0;
+            return numA - numB;
+          } else {
+            // Locale‐aware string compare
+            return cellA.localeCompare(cellB);
+          }
+        };
+
+        // Sort array
+        rows.sort(compare);
+        if (!sortAscending) {
+          rows.reverse();
+        }
+
+        // Re‐attach sorted rows into tbody
+        rows.forEach(row => tbody.appendChild(row));
+      }
+    });
+  </script>
+{% endblock %}

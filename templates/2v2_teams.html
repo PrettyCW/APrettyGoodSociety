@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}2v2 Teams • A Pretty Good Society{% endblock %}
+{% block content %}
+<section>
+  <div class="container">
+    <div class="section-header">2v2 League Teams</div>
+    <div class="table-responsive" style="max-width:600px; margin:0 auto;">
+      <table>
+        <thead>
+          <tr><th>Team Name</th><th>Conference</th></tr>
+        </thead>
+        <tbody>
+          {% for t in teams %}
+            <tr>
+              <td>
+                <a href="{{ url_for('team_page_2v2', team_id=t.team_id) }}">
+                  {{ t.team_name }}
+                </a>
+              </td>
+              <td>{{ t.conference }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

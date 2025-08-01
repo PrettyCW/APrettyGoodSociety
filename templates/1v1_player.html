@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ player_name }} • 1v1 League • A Pretty Good Society{% endblock %}
+{% block content %}
+<section>
+  <div class="container">
+    <div class="section-header">Player: {{ player_name }}</div>
+    <p><strong>Conference:</strong> {{ conference }}</p>
+
+    <h2 style="margin-top:2rem; color:#27ae60;">Stats</h2>
+    <p>Wins: {{ stats.wins }} | Losses: {{ stats.losses }} | Matches: {{ stats.played }} | Pt Diff: {{ stats.point_diff }}</p>
+
+    <h2 style="margin-top:2rem; color:#27ae60;">Recent Fixtures & Results</h2>
+    <div class="table-responsive" style="max-width:800px; margin:0 auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Phase</th><th>Opponent</th><th>Result</th><th>Pt Diff</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in matches %}
+            <tr>
+              <td>{{ m.date or "TBD" }}</td>
+              <td>{{ m.phase }}</td>
+              <td>
+                {% if m.winner_id == player_id %}
+                  <a href="{{ url_for('player_page_1v1', pid=m.loser_id) }}">{{ m.loser_name }}</a>
+                {% else %}
+                  <a href="{{ url_for('player_page_1v1', pid=m.winner_id) }}">{{ m.winner_name }}</a>
+                {% endif %}
+              </td>
+              <td>{{ m.result }}</td>
+              <td>{% if m.point_diff is not none %}{{ m.point_diff }}{% else %}&mdash;{% endif %}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <p style="text-align:center; margin-top:2rem;">
+      <a href="{{ url_for('players_1v1') }}" class="btn">← Back to Players</a>
+    </p>
+  </div>
+</section>
+{% endblock %}

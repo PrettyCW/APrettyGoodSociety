@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Coming Soon • A Pretty Good Society{% endblock %}
+
+{% block content %}
+  <section>
+    <div class="container">
+      <div class="section-header">Coming Soon!</div>
+      <p style="text-align: center; font-size: 1.25rem; margin-top: 1rem;">
+        We’re still putting the finishing touches on this page. Stay tuned!
+      </p>
+      <p style="text-align: center; margin-top: 1.5rem;">
+        <a href="{{ url_for('home') }}" class="btn">Return Home</a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

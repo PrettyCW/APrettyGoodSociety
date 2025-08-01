@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Season {{ season_id }} Overview • A Pretty Good Society{% endblock %}
+
+{% block content %}
+  <section>
+    <div class="container">
+      <div class="section-header">Season {{ season_id }} Overview</div>
+      <p style="text-align:center; margin-bottom:2rem;">
+        Select a tier below to see that tier’s events and results:
+      </p>
+      <div style="display:flex; justify-content:center; gap:2rem;">
+        {% for tier in all_tiers %}
+          {% if tier in tiers_present %}
+            <a href="{{ url_for('society_tier_page', season_id=season_id, tier_name=tier) }}"
+               class="btn"
+               style="min-width:120px; text-align:center;">
+              {{ tier }}
+            </a>
+          {% else %}
+            <button class="btn" style="opacity:0.5; min-width:120px;" disabled>
+              {{ tier }} (No events)
+            </button>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <p style="text-align:center; margin-top:3rem;">
+        <a href="{{ url_for('society_results') }}" class="btn">
+          ← Back to All Seasons Overview
+        </a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

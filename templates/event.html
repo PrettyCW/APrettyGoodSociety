@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Event {{ event_id }} • A Pretty Good Society{% endblock %}
+
+{% block content %}
+  <section>
+    <div class="container">
+      <div class="section-header">Event Details – {{ event_id }}</div>
+      <p style="text-align: center; margin-bottom: 1rem;">
+        <strong>Date:</strong> {{ event_date }}
+      </p>
+
+      {% for tier, participants in participants_by_tier.items() %}
+        <h2 style="margin-top:2rem; color:#27ae60;">{{ tier }} Tier</h2>
+        <div class="table-responsive">
+          <table class="sortable">
+            <thead>
+              <tr>
+                <th data-type="number">Rank</th>
+                <th data-type="text">Player</th>
+                <th data-type="number">Score</th>
+                <th data-type="number">Points</th>
+                <th data-type="number">Event PR</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in participants %}
+                <tr>
+                  <td>{{ loop.index }}</td>
+                  <td>
+                    <a href="{{ url_for('show_player', pid=row.player_id) }}">
+                      {{ row.player_name }}
+                    </a>
+                  </td>
+                  <td>{{ row.score }}</td>
+                  <td>{{ row.points }}</td>
+                  <td>{{ row.event_pr }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endfor %}
+
+      <!-- Fixed back‐button -->
+      <p style="text-align:center; margin-top:2rem;">
+        <a
+          href="{{ url_for('society_season_overview', season_id=season) }}"
+          class="btn"
+        >
+          ← Back to Season {{ season }} Overview
+        </a>
+      </p>
+    </div>
+  </section>
+
+  <!-- Table‐sorting script (as before) -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      document.querySelectorAll("table.sortable").forEach(table => {
+        const headers = table.querySelectorAll("th");
+        let sortColumn = null, sortAscending = true;
+        headers.forEach((header, idx) => {
+          header.style.cursor = "pointer";
+          header.addEventListener("click", () => {
+            const type = header.dataset.type || "text";
+            sortTable(table, idx, type);
+          });
+        });
+        function sortTable(tableEl, col, type) {
+          const tbody = tableEl.tBodies[0];
+          const rows = Array.from(tbody.rows);
+          if (sortColumn===col) sortAscending=!sortAscending;
+          else { sortColumn=col; sortAscending=true; }
+          rows.sort((a,b)=>{
+            let A=a.cells[col].textContent.trim(),
+                B=b.cells[col].textContent.trim();
+            if(type==="number") return (parseFloat(A)||0) - (parseFloat(B)||0);
+            return A.localeCompare(B);
+          });
+          if(!sortAscending) rows.reverse();
+          rows.forEach(r=>tbody.appendChild(r));
+        }
+      });
+    });
+  </script>
+{% endblock %}
+
+

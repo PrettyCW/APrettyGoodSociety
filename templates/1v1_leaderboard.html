@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}1v1 Leaderboard – {{ selected_conf }} • A Pretty Good Society{% endblock %}
+{% block content %}
+<section>
+  <div class="container">
+    <div class="section-header">1v1 League Leaderboard – {{ selected_conf }}</div>
+
+    <div style="text-align:center; margin-bottom:1rem;">
+      {% for c in conferences %}
+        {% if c == selected_conf %}
+          <span style="background:#27ae60;color:#fff;padding:0.25rem 0.75rem;border-radius:4px;">{{ c }}</span>
+        {% else %}
+          <a href="{{ url_for('leaderboard_1v1', conf_name=c) }}"
+             style="background:#ecf0f1;color:#333;padding:0.25rem 0.75rem;border-radius:4px;text-decoration:none;">
+            {{ c }}
+          </a>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="table-responsive" style="max-width:800px; margin:0 auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th><th>Player</th>
+            <th>Wins</th><th>Losses</th><th>Matches</th><th>Pt Diff</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in leaderboard %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>
+                <a href="{{ url_for('player_page_1v1', pid=row.player_id) }}">
+                  {{ row.player_name }}
+                </a>
+              </td>
+              <td>{{ row.wins }}</td>
+              <td>{{ row.losses }}</td>
+              <td>{{ row.matches_played }}</td>
+              <td>{{ row.point_diff }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

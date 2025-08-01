@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}2v2 Fixtures • A Pretty Good Society{% endblock %}
+
+{% block content %}
+<section>
+  <div class="container">
+    <div class="section-header">2v2 League Fixtures – Season 1 Premier</div>
+
+    {% for region, phases in fixtures_by_region.items() %}
+      <h2 style="margin-top:2rem; color:#27ae60;">{{ region }} Conference</h2>
+
+      {% for phase_name in phase_order %}
+        {% if phases.get(phase_name) %}
+          <h3 style="margin-top:1rem;">{{ phase_name }}</h3>
+          <div class="table-responsive" style="max-width:800px; margin-bottom:2rem;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Team A</th>
+                  <th>Team B</th>
+                  <th>Point Diff</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for m in phases[phase_name] %}
+                  <tr>
+                    <td>{{ m.date or "TBD" }}</td>
+                    <td>
+                      <a href="{{ url_for('team_page_2v2', team_id=m.winner_id) }}">
+                        {{ m.winner_name }}
+                      </a>
+                    </td>
+                    <td>
+                      <a href="{{ url_for('team_page_2v2', team_id=m.loser_id) }}">
+                        {{ m.loser_name }}
+                      </a>
+                    </td>
+                    <td>
+                      {% if m.point_diff is not none %}
+                        {{ m.point_diff }}
+                      {% else %}
+                        &mdash;
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endif %}
+      {% endfor %}
+
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

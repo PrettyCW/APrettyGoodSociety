@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ player_name }} • A Pretty Good Society{% endblock %}
+
+{% block content %}
+  <section>
+    <div class="container">
+      <div class="section-header">Player Profile – {{ player_name }}</div>
+
+      <!-- ─── Season Summaries ──────────────────────────────────────────── -->
+      {% if season_summaries %}
+        <div style="margin-bottom:2rem; max-width:600px; margin-left:auto; margin-right:auto;">
+          <h3 style="color:#27ae60; text-align:center;">Season Performance</h3>
+          <ul style="list-style:none; padding:0;">
+            {% for s in season_summaries %}
+              <li style="margin:0.75rem 0; font-size:1rem; text-align:center;">
+                <strong>Season {{ s.season }}:</strong>
+                {% for t in s.tiers %}
+                  <span style="display:inline-block; margin:0 0.5rem; padding:0.25rem 0.5rem; background:#ecf0f1; border-radius:4px;">
+                    {{ t }}
+                  </span>
+                {% endfor %}
+                &nbsp;|&nbsp;
+                <span>Pretty Rating: <strong>{{ s.pretty_rating }}</strong></span>
+                &nbsp;|&nbsp;
+                <a href="{{ url_for('society_season_overview', season_id=s.season) }}">View Season</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      <!-- ─── Event History Table ──────────────────────────────────────── -->
+      <div class="table-responsive" style="max-width:800px; margin: 0 auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Event ID</th>
+              <th>Date</th>
+              <th>Score</th>
+              <th>Rank</th>
+              <th>Event PR</th>
+              <th>Season</th>
+              <th>Tier</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in history %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('show_event', event_id=item.event_id) }}">
+                    {{ item.event_id }}
+                  </a>
+                </td>
+                <td>{{ item.event_date }}</td>
+                <td>{{ item.score }}</td>
+                <td>{{ item.rank }}</td>
+                <td>{{ item.event_pr }}</td>
+                <td>{{ item.season }}</td>
+                <td>{{ item.tier }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <p class="note">
+        Total Wins: {{ total_wins }}  |  Total Events Played: {{ history|length }}
+      </p>
+
+      <p style="text-align:center; margin-top:2rem;">
+        <a href="{{ url_for('society_players') }}" class="btn">
+          ← Back to Society Players
+        </a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

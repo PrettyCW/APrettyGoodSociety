@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Society Players • A Pretty Good Society{% endblock %}
+
+{% block content %}
+  <section>
+    <div class="container">
+      <div class="section-header">All Society Players</div>
+      <div class="table-responsive" style="max-width:600px; margin: 0 auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Player Name</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in player_list %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('show_player', pid=p.player_id) }}">
+                    {{ p.player_name }}
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+{% endblock %}
