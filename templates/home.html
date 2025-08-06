@@ -7,45 +7,15 @@
     <h1>A Pretty Good Society</h1>
     <div class="typewriter" id="typewriter"></div>
     <p>
-      Welcome to the ultimate online community for PGA 2K25 competitors. Whether you team up in 2v2 format, challenge rivals 1v1, or climb the Society ranks—your next birdie is one click away.
+      Welcome to the ultimate online community for PGA 2K25 competitors. Join our Society and climb the ranks—your next birdie is one click away.
     </p>
-    <a href="#2v2-league" class="btn">Learn More</a>
-    <div class="scroll-down" onclick="document.getElementById('2v2-league').scrollIntoView({ behavior: 'smooth' })">
+    <a href="#society-league" class="btn">Learn More</a>
+    <div class="scroll-down" onclick="document.getElementById('society-league').scrollIntoView({ behavior: 'smooth' })">
       ↓ Scroll Down
     </div>
   </section>
 
-  <!-- ========== 2v2 LEAGUE SYNOPSIS ========== -->
-  <section id="2v2-league">
-    <div class="container">
-      <div class="section-header">2v2 League Overview</div>
-      <div class="section-content">
-        <p>
-          Team up with a partner and battle other duos in the regionally based 2v2 League. Compete for the Premier League Cup. Each week, matchups rotate, keeping the competition fresh.
-        </p>
-        <!-- Updated to point to the 2v2 leaderboard route -->
-        <a href="{{ url_for('leaderboard_2v2') }}" class="btn learn-more">
-          View Leaderboard
-        </a>
-      </div>
-    </div>
-  </section>
 
-  <!-- ========== 1v1 LEAGUE SYNOPSIS ========== -->
-  <section id="1v1-league">
-    <div class="container">
-      <div class="section-header">1v1 League Overview</div>
-      <div class="section-content">
-        <p>
-          Test your solo skills in head-to-head matchups in a regionally based 1v1 League. The 1v1 League pits individual golfers against each other in weekly duels. Track your win-loss record, boost your ELO rating, and vie for the top spot!
-        </p>
-        <!-- Updated to point to the 1v1 leaderboard route -->
-        <a href="{{ url_for('leaderboard_1v1') }}" class="btn learn-more">
-          View Leaderboard
-        </a>
-      </div>
-    </div>
-  </section>
 
   <!-- ========== SOCIETY SYNOPSIS ========== -->
   <section id="society-league">
@@ -60,13 +30,26 @@
     </div>
   </section>
 
+  <!-- ========== TEAMS SYNOPSIS ========== -->
+  <section id="teams-league">
+    <div class="container">
+      <div class="section-header">Team Competition</div>
+      <div class="section-content">
+        <p>
+          Each Society event also features team-based 1v1 matches. Players are assigned to teams and compete in head-to-head battles against other teams. Teams earn points based on individual 1v1 results: 1 point for a win, 0.5 for a tie, 0 for a loss.
+        </p>
+        <a href="{{ url_for('teams_redirect') }}" class="btn learn-more">View Team Standings</a>
+      </div>
+    </div>
+  </section>
+
   <!-- ========== DAILY TOURNAMENTS SYNOPSIS ========== -->
   <section id="daily-tournaments">
     <div class="container">
       <div class="section-header">Daily Tournaments</div>
       <div class="section-content">
         <p>
-          We have pop up tournaments all the time in the Discord—sometimes Alt Shot, Scramble, 1v1, and a ton of different formats! Come be social!
+          We have pop up tournaments all the time in the Discord—sometimes Alt Shot, Scramble, and a ton of different formats! Come be social!
         </p>
         <a href="https://discord.gg/HqcqXN7sPm" class="btn learn-more">Join Discord</a>
       </div>
