@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Team Standings - Season {{ selected_season }} • A Pretty Good Society{% endblock %}
+
+{% block content %}
+  <section>
+    <div class="container">
+      <div class="section-header">Team Standings - Season {{ selected_season }}</div>
+
+      <!-- ─── Season Selector ──────────────────────────────────────────── -->
+      {% if seasons|length > 1 %}
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <label for="season-select" style="margin-right: 0.5rem; font-weight: bold;">Season:</label>
+          <select id="season-select" onchange="window.location.href='/teams/standings/season/' + this.value" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc;">
+            {% for season in seasons %}
+              <option value="{{ season }}" {% if season == selected_season %}selected{% endif %}>
+                Season {{ season }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+
+      <!-- ─── Team Standings Table ─────────────────────────────────────── -->
+      <div class="table-responsive" style="max-width: 1000px; margin: 0 auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Team</th>
+              <th>Team Record (W-L-T)</th>
+              <th>1v1 Record (W-L-T)</th>
+              <th>1v1 Points</th>
+              <th>1v1 Matches</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for team_id, stats in standings %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td>
+                  <a href="{{ url_for('team_detail', team_id=team_id, season_id=selected_season) }}">
+                    {{ stats.team_name }}
+                  </a>
+                </td>
+                <td>{{ stats.team_wins }}-{{ stats.team_losses }}-{{ stats.team_ties }}</td>
+                <td>{{ stats.wins }}-{{ stats.losses }}-{{ stats.ties }}</td>
+                <td>{{ "%.1f"|format(stats.points) }}</td>
+                <td>{{ stats.matches_played }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div style="margin-top: 2rem; text-align: center;">
+        <p class="note">
+          <strong>Scoring:</strong> 1 point for a win, 0.5 points for a tie, 0 points for a loss<br>
+          DNP (Did Not Play) results in a forfeit loss
+        </p>
+      </div>
+    </div>
+  </section>
+{% endblock %}

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}{{ team.team_name }} - Season {{ selected_season }} • A Pretty Good Society{% endblock %}
+
+{% block content %}
+  <section>
+    <div class="container">
+      <div class="section-header">{{ team.team_name }} - Season {{ selected_season }}</div>
+
+      <!-- ─── Season Selector ──────────────────────────────────────────── -->
+      {% if seasons|length > 1 %}
+        <div style="text-align: center; margin-bottom: 2rem;">
+          <label for="season-select" style="margin-right: 0.5rem; font-weight: bold;">Season:</label>
+          <select id="season-select" onchange="window.location.href='/teams/team/{{ team.team_id }}/season/' + this.value" style="padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc;">
+            {% for season in seasons %}
+              <option value="{{ season }}" {% if season == selected_season %}selected{% endif %}>
+                Season {{ season }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+
+      <!-- ─── Team Record ──────────────────────────────────────────────── -->
+      {% if team_record %}
+        <div style="text-align: center; margin-bottom: 2rem; background: #f8f9fa; padding: 1rem; border-radius: 8px; max-width: 400px; margin-left: auto; margin-right: auto;">
+          <h3 style="color: #27ae60; margin-bottom: 0.5rem;">Team Record</h3>
+          <p style="font-size: 1.2rem; margin: 0;">
+            <strong>{{ team_record.wins }}-{{ team_record.losses }}-{{ team_record.ties }}</strong>
+            ({{ "%.1f"|format(team_record.points) }} points)
+          </p>
+        </div>
+      {% endif %}
+
+      <!-- ─── Team Roster ──────────────────────────────────────────────── -->
+      <div style="margin-bottom: 3rem;">
+        <h3 style="color: #27ae60; text-align: center; margin-bottom: 1rem;">Team Roster</h3>
+        <div style="max-width: 500px; margin: 0 auto;">
+          <ul style="list-style: none; padding: 0;">
+            {% for player in roster %}
+              <li style="margin: 0.5rem 0; text-align: center; padding: 0.5rem; background: #ecf0f1; border-radius: 4px;">
+                <a href="{{ url_for('show_player', pid=player.player_id) }}" style="font-weight: bold;">
+                  {{ player.player_name }}
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+
+      <!-- ─── Match History ─────────────────────────────────────────────── -->
+      <div>
+        <h3 style="color: #27ae60; text-align: center; margin-bottom: 1rem;">1v1 Match History</h3>
+        <div class="table-responsive" style="max-width: 1000px; margin: 0 auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Player</th>
+                <th>Opponent</th>
+                <th>Player Score</th>
+                <th>Opponent Score</th>
+                <th>Result</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for match in matches %}
+                <tr>
+                  <td>{{ match.event }}</td>
+                  <td>
+                    <a href="{{ url_for('show_player', pid=match.player_id) }}">
+                      {{ match.player_name }}
+                    </a>
+                  </td>
+                  <td>
+                    {% if match.opponent == "Avg" %}
+                      Society Average
+                    {% else %}
+                      vs {{ match.opponent }}
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if match.player_score is not none %}
+                      {{ match.player_score }}
+                    {% else %}
+                      DNP
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if match.opponent_score is not none %}
+                      {{ match.opponent_score }}
+                    {% else %}
+                      DNP
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if match.result == "Win" %}
+                      <span style="color: #27ae60; font-weight: bold;">Win</span>
+                    {% elif match.result == "Loss" %}
+                      <span style="color: #e74c3c; font-weight: bold;">Loss</span>
+                    {% elif match.result == "Tie" %}
+                      <span style="color: #f39c12; font-weight: bold;">Tie</span>
+                    {% elif match.result == "DNP" %}
+                      <span style="color: #666;">DNP</span>
+                    {% else %}
+                      <span style="color: #666;">{{ match.result }}</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <p style="text-align: center; margin-top: 2rem;">
+        <a href="{{ url_for('show_teams_overview', season_id=selected_season) }}" class="btn">
+          ← Back to Team Standings
+        </a>
+      </p>
+    </div>
+  </section>
+{% endblock %}

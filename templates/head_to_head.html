@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Head-to-Head Checker - A Pretty Good Society{% endblock %}
+
+{% block content %}
+<style>
+  .player-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .player-option {
+    padding: 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.2s;
+  }
+  
+  .player-option:hover,
+  .player-option.highlighted {
+    background-color: #f0f0f0;
+  }
+  
+  .player-option:last-child {
+    border-bottom: none;
+  }
+  
+  .form-group {
+    position: relative;
+  }
+</style>
+
+<div class="container">
+  <h1 class="section-header">Head-to-Head Player Checker</h1>
+  
+  <div class="section-content">
+    <p>Compare two players' performances in the same events. Enter both player names to see who would have won in their direct matchups.</p>
+    
+    <form method="POST" style="max-width: 500px; margin: 2rem auto;">
+      <div style="margin-bottom: 1rem; position: relative;">
+        <label for="player1" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Player 1:</label>
+        <input type="text" id="player1" name="player1" 
+               value="{{ player1_name or '' }}" 
+               placeholder="Type to search players..."
+               autocomplete="off"
+               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+        <div id="player1-dropdown" class="player-dropdown" style="display: none;">
+          {% for player in all_players %}
+          <div class="player-option" data-player="{{ player }}">{{ player }}</div>
+          {% endfor %}
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 1rem; position: relative;">
+        <label for="player2" style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Player 2:</label>
+        <input type="text" id="player2" name="player2" 
+               value="{{ player2_name or '' }}" 
+               placeholder="Type to search players..."
+               autocomplete="off"
+               style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+        <div id="player2-dropdown" class="player-dropdown" style="display: none;">
+          {% for player in all_players %}
+          <div class="player-option" data-player="{{ player }}">{{ player }}</div>
+          {% endfor %}
+        </div>
+      </div>
+      
+      <button type="submit" class="btn" style="width: 100%; padding: 1rem;">Compare Players</button>
+    </form>
+
+    {% if error %}
+    <div style="background: #ffebee; color: #c62828; padding: 1rem; border-radius: 4px; margin: 1rem auto; max-width: 500px;">
+      {{ error }}
+    </div>
+    {% endif %}
+
+    {% if common_events %}
+    <div style="margin-top: 3rem;">
+      <h2 style="text-align: center; color: #27ae60; margin-bottom: 1rem;">Head-to-Head Summary</h2>
+      
+      <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap;">
+        <div style="text-align: center; background: #f9f9f9; padding: 1rem; border-radius: 8px; min-width: 120px;">
+          <div style="font-size: 2rem; font-weight: bold; color: #27ae60;">{{ summary.total_events }}</div>
+          <div style="font-size: 0.9rem; color: #666;">Shared Events</div>
+        </div>
+        
+        <div style="text-align: center; background: #f9f9f9; padding: 1rem; border-radius: 8px; min-width: 120px;">
+          <div style="font-size: 2rem; font-weight: bold; color: #2196f3;">{{ summary.player1_wins }}</div>
+          <div style="font-size: 0.9rem; color: #666;">{{ player1_name }} Wins</div>
+        </div>
+        
+        <div style="text-align: center; background: #f9f9f9; padding: 1rem; border-radius: 8px; min-width: 120px;">
+          <div style="font-size: 2rem; font-weight: bold; color: #ff9800;">{{ summary.player2_wins }}</div>
+          <div style="font-size: 0.9rem; color: #666;">{{ player2_name }} Wins</div>
+        </div>
+        
+        {% if summary.ties > 0 %}
+        <div style="text-align: center; background: #f9f9f9; padding: 1rem; border-radius: 8px; min-width: 120px;">
+          <div style="font-size: 2rem; font-weight: bold; color: #9e9e9e;">{{ summary.ties }}</div>
+          <div style="font-size: 0.9rem; color: #666;">Ties</div>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Season</th>
+              <th>Event</th>
+              <th>Date</th>
+              <th>{{ player1_name }}</th>
+              <th>{{ player2_name }}</th>
+              <th>Winner</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for event in common_events %}
+            <tr>
+              <td>{{ event.season }}</td>
+              <td>{{ event.event_id }}</td>
+              <td>{{ event.event_date }}</td>
+              <td>
+                <strong>{{ event.player1_score }}</strong><br>
+                <small style="color: #666;">
+                  Rank {{ event.player1_rank }} ({{ event.player1_tier }})
+                </small>
+              </td>
+              <td>
+                <strong>{{ event.player2_score }}</strong><br>
+                <small style="color: #666;">
+                  Rank {{ event.player2_rank }} ({{ event.player2_tier }})
+                </small>
+              </td>
+              <td>
+                {% if event.winner == "Tie" %}
+                  <span style="color: #9e9e9e; font-weight: bold;">Tie</span>
+                {% elif event.winner == player1_name %}
+                  <span style="color: #2196f3; font-weight: bold;">{{ player1_name }}</span>
+                {% else %}
+                  <span style="color: #ff9800; font-weight: bold;">{{ player2_name }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note">
+        <p><strong>Note:</strong> In golf, lower scores are better. Players may compete in different tiers within the same event.</p>
+      </div>
+    </div>
+    {% elif player1_name and player2_name %}
+    <div style="background: #fff3e0; color: #f57c00; padding: 1rem; border-radius: 4px; margin: 1rem auto; max-width: 600px; text-align: center;">
+      <strong>No shared events found.</strong><br>
+      {{ player1_name }} and {{ player2_name }} haven't competed in the same events, or one or both player names may be incorrect.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const player1Input = document.getElementById('player1');
+  const player2Input = document.getElementById('player2');
+  const player1Dropdown = document.getElementById('player1-dropdown');
+  const player2Dropdown = document.getElementById('player2-dropdown');
+  
+  function setupPlayerInput(input, dropdown) {
+    let currentFocus = -1;
+    
+    input.addEventListener('input', function() {
+      const value = this.value.toLowerCase();
+      const options = dropdown.querySelectorAll('.player-option');
+      let hasVisibleOptions = false;
+      
+      options.forEach((option, index) => {
+        const playerName = option.getAttribute('data-player').toLowerCase();
+        if (playerName.includes(value)) {
+          option.style.display = 'block';
+          hasVisibleOptions = true;
+        } else {
+          option.style.display = 'none';
+        }
+        option.classList.remove('highlighted');
+      });
+      
+      currentFocus = -1;
+      dropdown.style.display = hasVisibleOptions && value.length > 0 ? 'block' : 'none';
+    });
+    
+    input.addEventListener('focus', function() {
+      if (this.value.length > 0) {
+        this.dispatchEvent(new Event('input'));
+      }
+    });
+    
+    input.addEventListener('keydown', function(e) {
+      const options = Array.from(dropdown.querySelectorAll('.player-option')).filter(opt => opt.style.display !== 'none');
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        currentFocus = Math.min(currentFocus + 1, options.length - 1);
+        updateHighlight(options);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        currentFocus = Math.max(currentFocus - 1, 0);
+        updateHighlight(options);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (currentFocus >= 0 && options[currentFocus]) {
+          selectPlayer(input, dropdown, options[currentFocus]);
+        }
+      } else if (e.key === 'Escape') {
+        dropdown.style.display = 'none';
+        currentFocus = -1;
+      }
+    });
+    
+    function updateHighlight(options) {
+      options.forEach((option, index) => {
+        option.classList.toggle('highlighted', index === currentFocus);
+      });
+    }
+    
+    function selectPlayer(input, dropdown, option) {
+      input.value = option.getAttribute('data-player');
+      dropdown.style.display = 'none';
+      currentFocus = -1;
+    }
+    
+    // Handle clicks on options
+    dropdown.addEventListener('click', function(e) {
+      if (e.target.classList.contains('player-option')) {
+        selectPlayer(input, dropdown, e.target);
+      }
+    });
+    
+    // Hide dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+        currentFocus = -1;
+      }
+    });
+  }
+  
+  setupPlayerInput(player1Input, player1Dropdown);
+  setupPlayerInput(player2Input, player2Dropdown);
+});
+</script>
+{% endblock %}

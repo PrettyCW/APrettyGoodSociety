@@ -330,7 +330,8 @@
             <a href="{{ url_for('home') }}">A Pretty Good Society</a>
           </div>
           <ul class="nav-links">
-            <!-- ─── 2v2 League Dropdown ─────────────────────────────── -->
+            <!-- ─── 2v2 League Dropdown (DISABLED) ─────────────────────────────── -->
+            <!--
             <li class="dropdown">
               <a href="javascript:void(0)">2v2 League ▾</a>
               <ul class="dropdown-content">
@@ -339,14 +340,27 @@
                 <li><a href="{{ url_for('results_2v2') }}">Fixtures</a></li>
               </ul>
             </li>
+            -->
 
-            <!-- ─── 1v1 League Dropdown ─────────────────────────────── -->
+            <!-- ─── 1v1 League Dropdown (DISABLED) ─────────────────────────────── -->
+            <!--
             <li class="dropdown">
               <a href="javascript:void(0)">1v1 League ▾</a>
               <ul class="dropdown-content">
                 <li><a href="{{ url_for('players_1v1') }}">Players</a></li>
                 <li><a href="{{ url_for('leaderboard_1v1') }}">Leaderboard</a></li>
                 <li><a href="{{ url_for('results_1v1') }}">Fixtures</a></li>
+              </ul>
+            </li>
+            -->
+
+            <!-- ─── Teams Dropdown ───────────────────────────────── -->
+            <li class="dropdown">
+              <a href="javascript:void(0)">Teams ▾</a>
+              <ul class="dropdown-content">
+                <li>
+                  <a href="{{ url_for('teams_redirect') }}">Team Standings</a>
+                </li>
               </ul>
             </li>
 
@@ -362,6 +376,9 @@
                 </li>
                 <li>
                   <a href="{{ url_for('society_results') }}">Results</a>
+                </li>
+                <li>
+                  <a href="{{ url_for('head_to_head') }}">Head-to-Head</a>
                 </li>
               </ul>
             </li>
@@ -404,9 +421,7 @@
     const typewriterElement = document.getElementById('typewriter');
     const phrases = [
       'Team Up. Tee Off. Triumph.',
-      'Solo Glory in 1v1 Matches.',
       'Compete in A Pretty Good Society.',
-      'Socialize with Daily Tournaments.',
       'Connect on Discord & Compete.'
     ];
     const typingSpeed = 100; // ms per character
@@ -417,6 +432,8 @@
     let isDeleting = false;
 
     function type() {
+      if (!typewriterElement) return; // Guard against null element
+      
       const current = phrases[phraseIndex];
       if (!isDeleting) {
         // Typing
@@ -442,7 +459,7 @@
       }
     }
     document.addEventListener('DOMContentLoaded', () => {
-      if (phrases.length) setTimeout(type, typingSpeed + 500);
+      if (typewriterElement && phrases.length) setTimeout(type, typingSpeed + 500);
     });
 
     // ---------- Scroll Reveal ----------
@@ -460,7 +477,10 @@
     window.addEventListener('load', revealOnScroll);
 
     // ---------- Footer Year Auto-update ----------
-    document.getElementById('year').textContent = new Date().getFullYear();
+    const yearElement = document.getElementById('year');
+    if (yearElement) {
+      yearElement.textContent = new Date().getFullYear();
+    }
   </script>
 </body>
 </html>

@@ -1,104 +1,24 @@
 import csv, os, threading
-from flask import Flask, render_template, abort
+from flask import Flask, render_template, abort, redirect, url_for, request
 from collections import defaultdict, OrderedDict
 
 app = Flask(__name__)
 
-# ─── 1) Path to the CSV ─────────────────────────────────────────────────────
-BASE_DIR = os.path.dirname(__file__)
-CSV_PATH = os.path.join(BASE_DIR, "data", "league_data.csv")
+# ─── HELPER FUNCTIONS ──────────────────────────────────────────────────────
 
-# ─── 2) In‐memory cache for CSV rows + tracking last modification time ────
-_csv_lock = threading.Lock()
-_cached_rows = None
-_cached_mtime = None
-
-def load_csv_cached():
-    global _cached_rows, _cached_mtime
-
+def safe_int(value, default=0):
+    """Safely convert value to int, returning default if conversion fails"""
     try:
-        current_mtime = os.path.getmtime(CSV_PATH)
-    except OSError:
-        return []
+        return int(value)
+    except (ValueError, TypeError):
+        return default
 
-    with _csv_lock:
-        if _cached_rows is None or current_mtime != _cached_mtime:
-            rows = []
-            with open(CSV_PATH, newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    # Convert and normalize types
-                    try:
-                        row["player_id"] = int(row["player_id"])
-                    except:
-                        row["player_id"] = None
+def safe_string(value):
+    """Safely convert value to string, returning empty string if None"""
+    return (value or "").strip()
 
-                    # Ensure player_name is never None
-                    row["player_name"] = (row.get("player_name") or "").strip()
-
-                    row["event_id"] = (row.get("event_id") or "").strip()
-                    row["event_date"] = (row.get("event_date") or "").strip()
-
-                    try:
-                        row["score"] = int(row.get("score", 0))
-                    except:
-                        row["score"] = 0
-                    try:
-                        row["rank"] = int(row.get("rank", 0))
-                    except:
-                        row["rank"] = 0
-                    try:
-                        row["points"] = int(row.get("points", 0))
-                    except:
-                        row["points"] = 0
-                    try:
-                        row["event_pr"] = int(row.get("event_pr", 0))
-                    except:
-                        row["event_pr"] = 0
-                    try:
-                        row["season"] = int(row.get("season", 0))
-                    except:
-                        row["season"] = 0
-
-                    # This is the important change: guard against None
-                    row["tier"] = (row.get("tier") or "").strip()
-
-                    rows.append(row)
-
-            _cached_rows = rows
-            _cached_mtime = current_mtime
-
-        return _cached_rows
-
-
-# ─── ROUTE: Home (the “pretty” homepage) ────────────────────────────────────
-@app.route("/")
-def home():
-    return render_template("home.html")
-
-
-# ─── ROUTE: Leaderboard (society) ───────────────────────────────────────────
-# ─── Revised show_leaderboard to support multiple seasons ────────────
-from flask import request
-
-@app.route("/leaderboard")
-@app.route("/leaderboard/season/<int:season_id>")
-def show_leaderboard(season_id=None):
-    data = load_csv_cached()
-    seasons = sorted({r["season"] for r in data})
-    if not seasons:
-        abort(404)
-    if season_id in seasons:
-        selected_season = season_id
-    else:
-        selected_season = seasons[-1]
-    # Build the tier list for that season:
-    tiers_present = sorted({r["tier"] for r in data if r["season"]==selected_season})
-
-    # 3) Filter data to only rows in the selected season
-    season_rows = [r for r in data if r["season"] == selected_season]
-
-    # 4) Aggregate stats per player for this season
+def calculate_player_stats(season_rows):
+    """Calculate aggregated stats for players from season data"""
     stats = {}
     for r in season_rows:
         pid = r["player_id"]
@@ -127,7 +47,8 @@ def show_leaderboard(season_id=None):
             agg["podiums"] += 1
         if 1 <= r["rank"] <= 10:
             agg["top10s"] += 1
-
+    
+    # Convert to leaderboard format
     leaderboard = []
     for agg in stats.values():
         avg_pr = agg["event_pr_sum"] / agg["event_pr_count"] if agg["event_pr_count"] else 0
@@ -141,8 +62,80 @@ def show_leaderboard(season_id=None):
             "events_played": agg["events_played"],
             "prettyrating": round(avg_pr)
         })
-
+    
     leaderboard.sort(key=lambda x: (x["points"], x["wins"]), reverse=True)
+    return leaderboard
+
+# ─── 1) Path to the CSV ─────────────────────────────────────────────────────
+BASE_DIR = os.path.dirname(__file__)
+CSV_PATH = os.path.join(BASE_DIR, "data", "league_data.csv")
+
+# ─── 2) In‐memory cache for CSV rows + tracking last modification time ────
+_csv_lock = threading.Lock()
+_cached_rows = None
+_cached_mtime = None
+
+def load_csv_cached():
+    global _cached_rows, _cached_mtime
+
+    try:
+        current_mtime = os.path.getmtime(CSV_PATH)
+    except OSError:
+        return []
+
+    with _csv_lock:
+        if _cached_rows is None or current_mtime != _cached_mtime:
+            rows = []
+            with open(CSV_PATH, newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    # Convert and normalize types
+                    row["player_id"] = safe_int(row.get("player_id"))
+                    row["player_name"] = safe_string(row.get("player_name"))
+                    row["event_id"] = safe_string(row.get("event_id"))
+                    row["event_date"] = safe_string(row.get("event_date"))
+                    row["score"] = safe_int(row.get("score"))
+                    row["rank"] = safe_int(row.get("rank"))
+                    row["points"] = safe_int(row.get("points"))
+                    row["event_pr"] = safe_int(row.get("event_pr"))
+                    row["season"] = safe_int(row.get("season"))
+                    row["tier"] = safe_string(row.get("tier"))
+                    rows.append(row)
+
+            _cached_rows = rows
+            _cached_mtime = current_mtime
+
+        return _cached_rows
+
+
+# ─── ROUTE: Home (the “pretty” homepage) ────────────────────────────────────
+@app.route("/")
+def home():
+    return render_template("home.html")
+
+
+# ─── ROUTE: Leaderboard (society) ───────────────────────────────────────────
+# ─── Revised show_leaderboard to support multiple seasons ────────────
+
+@app.route("/leaderboard")
+@app.route("/leaderboard/season/<int:season_id>")
+def show_leaderboard(season_id=None):
+    data = load_csv_cached()
+    seasons = sorted({r["season"] for r in data})
+    if not seasons:
+        abort(404)
+    if season_id in seasons:
+        selected_season = season_id
+    else:
+        selected_season = seasons[-1]
+    # Build the tier list for that season:
+    tiers_present = sorted({r["tier"] for r in data if r["season"]==selected_season})
+
+    # Filter data to only rows in the selected season
+    season_rows = [r for r in data if r["season"] == selected_season]
+
+    # Calculate aggregated stats per player for this season
+    leaderboard = calculate_player_stats(season_rows)
 
     return render_template(
       "leaderboard.html",
@@ -256,7 +249,7 @@ def show_player(pid):
     )
 
 
-# --- NEW: load 2v2 teams ---
+# ─── 2v2 Teams Data ────────────────────────────────────────────────────────
 _teams_lock = threading.Lock()
 _cached_teams = None
 def load_2v2_teams():
@@ -275,7 +268,7 @@ def load_2v2_teams():
         _cached_teams = teams
     return _cached_teams
 
-# --- NEW: load 2v2 matches ---
+# ─── 2v2 Matches Data ──────────────────────────────────────────────────────
 _cached_matches = None
 def load_2v2_matches():
     global _cached_matches
@@ -285,22 +278,15 @@ def load_2v2_matches():
         with open(path, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for r in reader:
-                        # Parse date (allow blank)
-                date = r.get("date","").strip() or None
-                # Parse point_diff, treat blank or invalid as None
-                try:
-                    diff = int(r.get("point_diff",""))
-                except (ValueError, TypeError):
-                    diff = None
-
+                date = safe_string(r.get("date")) or None
                 ms.append({
-                    "match_id":   int(r["match_id"]),
-                    "season":     int(r["season"]),
-                    "phase":      r["phase"],
-                    "date":       date,
-                    "winner_id":  int(r["winner_id"]),
-                    "loser_id":   int(r["loser_id"]),
-                    "point_diff": diff
+                    "match_id": safe_int(r.get("match_id")),
+                    "season": safe_int(r.get("season")),
+                    "phase": safe_string(r.get("phase")),
+                    "date": date,
+                    "winner_id": safe_int(r.get("winner_id")),
+                    "loser_id": safe_int(r.get("loser_id")),
+                    "point_diff": safe_int(r.get("point_diff")) if r.get("point_diff", "").strip() else None
                 })
         _cached_matches = ms
     return _cached_matches
@@ -317,8 +303,6 @@ def teams_2v2():
     return render_template("2v2_teams.html", teams=team_list)
 
 # --- 2v2 Leaderboard page ---
-from collections import OrderedDict
-
 @app.route("/2v2/leaderboard")
 @app.route("/2v2/leaderboard/conference/<conf_name>")
 def leaderboard_2v2(conf_name=None):
@@ -534,7 +518,101 @@ def society_season_overview(season_id):
                            all_tiers=all_tiers,
                            tiers_present=tiers_present)
 
-# Near your existing leaderboard() route, import abort and add:
+
+# ─── ROUTE: Head-to-Head Checker ──────────────────────────────────────────
+@app.route("/head-to-head", methods=["GET", "POST"])
+def head_to_head():
+    """
+    Compare two players' performances in the same events.
+    Shows which events they both played in and who would have won between them.
+    """
+    data = load_csv_cached()
+    
+    # Get all unique players for dropdown
+    all_players = sorted(set(safe_string(r["player_name"]) for r in data if r["player_name"]))
+    
+    if request.method == "GET":
+        # Show the form
+        return render_template("head_to_head.html", all_players=all_players)
+    
+    # POST - process the form
+    player1_name = request.form.get("player1", "").strip()
+    player2_name = request.form.get("player2", "").strip()
+    
+    if not player1_name or not player2_name:
+        return render_template("head_to_head.html", 
+                             all_players=all_players,
+                             error="Please enter both player names.")
+    
+    # Find all events where both players participated
+    player1_events = {}
+    player2_events = {}
+    
+    for r in data:
+        player_name = safe_string(r["player_name"]).lower()
+        if player_name == player1_name.lower():
+            event_key = f"{r['season']}-{r['event_id']}"
+            player1_events[event_key] = r
+        elif player_name == player2_name.lower():
+            event_key = f"{r['season']}-{r['event_id']}"
+            player2_events[event_key] = r
+    
+    # Find common events
+    common_events = []
+    player1_wins = 0
+    player2_wins = 0
+    ties = 0
+    
+    for event_key in player1_events:
+        if event_key in player2_events:
+            p1_data = player1_events[event_key]
+            p2_data = player2_events[event_key]
+            
+            # Determine winner (lower score wins in golf)
+            p1_score = safe_int(p1_data["score"])
+            p2_score = safe_int(p2_data["score"])
+            
+            if p1_score < p2_score:
+                winner = player1_name
+                player1_wins += 1
+            elif p2_score < p1_score:
+                winner = player2_name
+                player2_wins += 1
+            else:
+                winner = "Tie"
+                ties += 1
+            
+            common_events.append({
+                "season": p1_data["season"],
+                "event_id": p1_data["event_id"],
+                "event_date": p1_data["event_date"],
+                "player1_name": p1_data["player_name"],
+                "player1_score": p1_score,
+                "player1_rank": safe_int(p1_data["rank"]),
+                "player1_tier": p1_data["tier"],
+                "player2_name": p2_data["player_name"],
+                "player2_score": p2_score,
+                "player2_rank": safe_int(p2_data["rank"]),
+                "player2_tier": p2_data["tier"],
+                "winner": winner
+            })
+    
+    # Sort by season and event date
+    common_events.sort(key=lambda x: (x["season"], x["event_date"]))
+    
+    summary = {
+        "total_events": len(common_events),
+        "player1_wins": player1_wins,
+        "player2_wins": player2_wins,
+        "ties": ties
+    }
+    
+    return render_template("head_to_head.html", 
+                         all_players=all_players,
+                         player1_name=player1_name,
+                         player2_name=player2_name,
+                         common_events=common_events,
+                         summary=summary)
 
 @app.route("/leaderboard/season/<int:season_id>/tier/<tier_name>")
 def show_leaderboard_tier(season_id, tier_name):
@@ -551,44 +629,11 @@ def show_leaderboard_tier(season_id, tier_name):
     if tier_name not in tiers_present:
         return abort(404)
 
-    # 3) Filter just that season + tier
+    # Filter just that season + tier
     subset = [r for r in data if r["season"]==season_id and r["tier"]==tier_name]
 
-    # 4) Aggregate stats exactly like the main leaderboard
-    stats = {}
-    for r in subset:
-        pid = r["player_id"]
-        if pid not in stats:
-            stats[pid] = {
-                "player_id": pid,
-                "player_name": r["player_name"],
-                "wins": 0, "podiums": 0, "top10s": 0,
-                "events_played": 0, "points": 0,
-                "event_pr_sum": 0, "event_pr_count": 0
-            }
-        agg = stats[pid]
-        agg["events_played"] += 1
-        agg["points"] += r["points"]
-        agg["event_pr_sum"] += r["event_pr"]
-        agg["event_pr_count"] += 1
-        if r["rank"] == 1:         agg["wins"] += 1
-        if 1 <= r["rank"] <= 3:    agg["podiums"] += 1
-        if 1 <= r["rank"] <= 10:   agg["top10s"] += 1
-
-    leaderboard = []
-    for agg in stats.values():
-        avg_pr = agg["event_pr_sum"] / agg["event_pr_count"] if agg["event_pr_count"] else 0
-        leaderboard.append({
-            "player_id": agg["player_id"],
-            "player_name": agg["player_name"],
-            "points":    agg["points"],
-            "wins":      agg["wins"],
-            "podiums":   agg["podiums"],
-            "top10s":    agg["top10s"],
-            "events_played": agg["events_played"],
-            "prettyrating":  round(avg_pr)
-        })
-    leaderboard.sort(key=lambda x:(x["points"], x["wins"]), reverse=True)
+    # Calculate aggregated stats per player
+    leaderboard = calculate_player_stats(subset)
 
     return render_template(
         "leaderboard.html",
@@ -670,21 +715,15 @@ def load_1v1_matches():
         with open(path, newline="", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for r in reader:
-                # parse date or None
-                date = (r.get("date","") or "").strip() or None
-                # parse point_diff or None
-                try:
-                    diff = int(r.get("point_diff",""))
-                except:
-                    diff = None
+                date = safe_string(r.get("date")) or None
                 ms.append({
-                    "match_id":   int(r["match_id"]),
-                    "season":     int(r["season"]),
-                    "phase":      r["phase"],
-                    "date":       date,
-                    "winner_id":  int(r["winner_id"]),
-                    "loser_id":   int(r["loser_id"]),
-                    "point_diff": diff
+                    "match_id": safe_int(r.get("match_id")),
+                    "season": safe_int(r.get("season")),
+                    "phase": safe_string(r.get("phase")),
+                    "date": date,
+                    "winner_id": safe_int(r.get("winner_id")),
+                    "loser_id": safe_int(r.get("loser_id")),
+                    "point_diff": safe_int(r.get("point_diff")) if r.get("point_diff", "").strip() else None
                 })
         _cached_1v1_matches = ms
     return _cached_1v1_matches
@@ -815,6 +854,444 @@ def results_1v1():
     return render_template("1v1_fixtures.html",
                             fixtures_by_region=fixtures_by_region,
                             phase_order=phase_order)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ─── TEAMS FUNCTIONALITY ──────────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def load_team_data():
+    """Load team data from team_data.csv with team names"""
+    team_assignments = []
+    teams = {}
+    
+    try:
+        with open(os.path.join(BASE_DIR, "data", "team_data.csv"), newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                # Skip empty rows
+                if not row.get("player_id") or row.get("player_id") == "":
+                    continue
+                    
+                # Parse team_data.csv row with new team_name column
+                player_id = safe_int(row.get("player_id"))
+                team_id = safe_int(row.get("team_id"))
+                team_name = safe_string(row.get("team_name"))
+                opponent_player_id = row.get("event_1v1_opponent", "")
+                team_opponent = row.get("team_opponent", "")
+                event = safe_string(row.get("event"))
+                season = safe_int(row.get("season"))
+                
+                # Convert team_opponent to int if it's not "Society Avg"
+                if team_opponent == "Society Avg":
+                    team_opponent_id = None
+                    opponent_player_id = "Avg"
+                else:
+                    team_opponent_id = safe_int(team_opponent) if team_opponent else None
+                    opponent_player_id = safe_int(opponent_player_id) if opponent_player_id.isdigit() else opponent_player_id
+                
+                team_assignments.append({
+                    "player_id": player_id,
+                    "team_id": team_id,
+                    "team_name": team_name,
+                    "opponent_player_id": opponent_player_id,
+                    "team_opponent": team_opponent_id,
+                    "event": event,
+                    "season": season
+                })
+                
+                # Build teams dictionary with actual team names
+                if team_id not in teams:
+                    teams[team_id] = {
+                        "team_id": team_id,
+                        "team_name": team_name,
+                        "season": season
+                    }
+                
+    except (FileNotFoundError, ValueError, KeyError) as e:
+        print(f"Error loading team data: {e}")
+        return {}, []
+    
+    return teams, team_assignments
+
+def calculate_team_standings(season):
+    """Calculate team standings based on 1v1 match results"""
+    teams, team_assignments = load_team_data()
+    league_data = load_csv_cached()
+    
+    # Filter to specific season
+    season_assignments = [ta for ta in team_assignments if ta["season"] == season]
+    season_league_data = [ld for ld in league_data if ld["season"] == season]
+    
+    # Create player score lookup by event
+    player_scores = {}
+    for ld in season_league_data:
+        event_id = ld["event_id"]
+        player_id = ld["player_id"]
+        if event_id not in player_scores:
+            player_scores[event_id] = {}
+        player_scores[event_id][player_id] = ld["score"]
+    
+    # Calculate society average by event
+    society_averages = {}
+    for event_id in player_scores:
+        scores = list(player_scores[event_id].values())
+        if scores:
+            society_averages[event_id] = int(sum(scores) / len(scores))  # rounded down
+    
+    # Initialize team standings
+    team_standings = {}
+    for assignment in season_assignments:
+        team_id = assignment["team_id"]
+        if team_id not in team_standings:
+            # Get team info if available, otherwise use default
+            team_info = teams.get(team_id, {"team_name": f"Team {team_id}", "season": season})
+            team_standings[team_id] = {
+                "team_name": team_info["team_name"],
+                "wins": 0,
+                "losses": 0,
+                "ties": 0,
+                "points": 0.0,
+                "matches_played": 0,
+                "team_wins": 0,
+                "team_losses": 0,
+                "team_ties": 0,
+                "team_matches_played": 0,
+                "points_by_event": {}  # Track points per event for team match calculation
+            }
+    
+    # Process 1v1 matches
+    processed_matches = set()
+    
+    for assignment in season_assignments:
+        player1_id = assignment["player_id"]
+        team1_id = assignment["team_id"]
+        event = assignment["event"]
+        
+        # Initialize event tracking for this team if needed
+        if event not in team_standings[team1_id]["points_by_event"]:
+            team_standings[team1_id]["points_by_event"][event] = 0.0
+        
+        # Find corresponding opponent assignment
+        opponent_assignments = [
+            ta for ta in season_assignments 
+            if ta["event"] == event and ta["player_id"] == assignment["opponent_player_id"]
+        ] if assignment["opponent_player_id"] != "Avg" else []
+        
+        if assignment["opponent_player_id"] == "Avg":
+            # Playing against society average
+            event_id = event
+            player1_score = player_scores.get(event_id, {}).get(player1_id)
+            avg_score = society_averages.get(event_id, 0)
+            
+            if player1_score is not None:
+                if player1_score < avg_score:  # Lower score wins in golf
+                    team_standings[team1_id]["wins"] += 1
+                    team_standings[team1_id]["points"] += 1.0
+                    team_standings[team1_id]["points_by_event"][event] += 1.0
+                elif player1_score > avg_score:
+                    team_standings[team1_id]["losses"] += 1
+                else:
+                    team_standings[team1_id]["ties"] += 1
+                    team_standings[team1_id]["points"] += 0.5
+                    team_standings[team1_id]["points_by_event"][event] += 0.5
+                team_standings[team1_id]["matches_played"] += 1
+            else:
+                # Player DNP vs Society Average = Loss
+                team_standings[team1_id]["losses"] += 1
+                team_standings[team1_id]["matches_played"] += 1
+            
+        elif opponent_assignments:
+            opponent = opponent_assignments[0]
+            player2_id = opponent["player_id"]
+            team2_id = opponent["team_id"]
+            
+            # Only process each match once by ensuring we process it from the lower player ID
+            # This prevents double counting since both players have assignments pointing to each other
+            if player1_id >= player2_id:
+                continue
+            
+            # Ensure opponent team exists in standings (safety check)
+            if team2_id not in team_standings:
+                continue
+            
+            # Initialize event tracking for both teams if needed
+            if event not in team_standings[team2_id]["points_by_event"]:
+                team_standings[team2_id]["points_by_event"][event] = 0.0
+            
+            event_id = event
+            player1_score = player_scores.get(event_id, {}).get(player1_id)
+            player2_score = player_scores.get(event_id, {}).get(player2_id)
+            
+            # Determine match result
+            if player1_score is None and player2_score is None:
+                # Both DNP - tie
+                team_standings[team1_id]["ties"] += 1
+                team_standings[team1_id]["points"] += 0.5
+                team_standings[team1_id]["points_by_event"][event] += 0.5
+                team_standings[team1_id]["matches_played"] += 1
+                team_standings[team2_id]["ties"] += 1
+                team_standings[team2_id]["points"] += 0.5
+                team_standings[team2_id]["points_by_event"][event] += 0.5
+                team_standings[team2_id]["matches_played"] += 1
+            elif player1_score is None:
+                # Player 1 DNP - Player 2 wins
+                team_standings[team1_id]["losses"] += 1
+                team_standings[team1_id]["matches_played"] += 1
+                team_standings[team2_id]["wins"] += 1
+                team_standings[team2_id]["points"] += 1.0
+                team_standings[team2_id]["points_by_event"][event] += 1.0
+                team_standings[team2_id]["matches_played"] += 1
+            elif player2_score is None:
+                # Player 2 DNP - Player 1 wins
+                team_standings[team1_id]["wins"] += 1
+                team_standings[team1_id]["points"] += 1.0
+                team_standings[team1_id]["points_by_event"][event] += 1.0
+                team_standings[team1_id]["matches_played"] += 1
+                team_standings[team2_id]["losses"] += 1
+                team_standings[team2_id]["matches_played"] += 1
+            else:
+                # Both played
+                if player1_score < player2_score:  # Lower score wins
+                    team_standings[team1_id]["wins"] += 1
+                    team_standings[team1_id]["points"] += 1.0
+                    team_standings[team1_id]["points_by_event"][event] += 1.0
+                    team_standings[team1_id]["matches_played"] += 1
+                    team_standings[team2_id]["losses"] += 1
+                    team_standings[team2_id]["matches_played"] += 1
+                elif player1_score > player2_score:
+                    team_standings[team1_id]["losses"] += 1
+                    team_standings[team1_id]["matches_played"] += 1
+                    team_standings[team2_id]["wins"] += 1
+                    team_standings[team2_id]["points"] += 1.0
+                    team_standings[team2_id]["points_by_event"][event] += 1.0
+                    team_standings[team2_id]["matches_played"] += 1
+                else:
+                    # Tie
+                    team_standings[team1_id]["ties"] += 1
+                    team_standings[team1_id]["points"] += 0.5
+                    team_standings[team1_id]["points_by_event"][event] += 0.5
+                    team_standings[team1_id]["matches_played"] += 1
+                    team_standings[team2_id]["ties"] += 1
+                    team_standings[team2_id]["points"] += 0.5
+                    team_standings[team2_id]["points_by_event"][event] += 0.5
+                    team_standings[team2_id]["matches_played"] += 1
+    
+    # Calculate team match records based on points per event
+    # Season 2: 4 players per team, so 2.5+ points = win, 2.0 = tie, 1.5- = loss
+    # Season 3: 5 players per team, so 3.0+ points = win, 2.5 = tie, 2.0- = loss
+    
+    # Determine team size for this season
+    if season == 2:
+        win_threshold = 2.5
+        tie_threshold = 2.0
+    else:  # Season 3 and beyond
+        win_threshold = 3.0
+        tie_threshold = 2.5
+    
+    # Get all unique events for this season
+    all_events = set()
+    for team_id, stats in team_standings.items():
+        all_events.update(stats["points_by_event"].keys())
+    
+    # Process each event to determine team match results
+    for event in all_events:
+        # Get all teams and their points for this event
+        teams_in_event = []
+        for team_id, stats in team_standings.items():
+            event_points = stats["points_by_event"].get(event, 0.0)
+            if event_points > 0 or any(ta["event"] == event and ta["team_id"] == team_id for ta in season_assignments):
+                teams_in_event.append((team_id, event_points))
+        
+        # Determine team match results for this event
+        for team_id, points in teams_in_event:
+            if points >= win_threshold:
+                team_standings[team_id]["team_wins"] += 1
+            elif points >= tie_threshold:
+                team_standings[team_id]["team_ties"] += 1
+            else:
+                team_standings[team_id]["team_losses"] += 1
+            team_standings[team_id]["team_matches_played"] += 1
+    
+    # Sort by points (descending), then by wins
+    sorted_standings = sorted(
+        [(team_id, stats) for team_id, stats in team_standings.items()],
+        key=lambda x: (x[1]["points"], x[1]["wins"]),
+        reverse=True
+    )
+    
+    return sorted_standings
+
+@app.route("/teams")
+def teams_redirect():
+    """Redirect to latest season"""
+    teams, team_assignments = load_team_data()
+    seasons = sorted({ta["season"] for ta in team_assignments})
+    if not seasons:
+        abort(404)
+    return redirect(url_for('show_teams_overview', season_id=seasons[-1]))
+
+@app.route("/teams/standings/season/<int:season_id>")
+def show_teams_overview(season_id=None):
+    """Show team standings overview"""
+    teams, team_assignments = load_team_data()
+    
+    # Get available seasons
+    seasons = sorted({ta["season"] for ta in team_assignments})
+    if not seasons:
+        abort(404)
+    
+    if season_id not in seasons:
+        abort(404)
+    
+    standings = calculate_team_standings(season_id)
+    
+    return render_template("teams_overview.html", 
+                         standings=standings,
+                         selected_season=season_id,
+                         seasons=seasons)
+
+@app.route("/teams/team/<int:team_id>/season/<int:season_id>")
+def team_detail(team_id, season_id):
+    """Show detailed team page with roster and match history"""
+    teams, team_assignments = load_team_data()
+    league_data = load_csv_cached()
+    
+    if team_id not in teams:
+        abort(404)
+    
+    # Get available seasons for this team
+    team_seasons = sorted({ta["season"] for ta in team_assignments if ta["team_id"] == team_id})
+    if not team_seasons:
+        abort(404)
+    
+    if season_id not in team_seasons:
+        abort(404)
+    
+    team_info = teams[team_id]
+    
+    # Get team roster for the season
+    roster_assignments = [ta for ta in team_assignments if ta["team_id"] == team_id and ta["season"] == season_id]
+    
+    # Get unique players
+    roster_player_ids = {ta["player_id"] for ta in roster_assignments}
+    
+    # Get player names from league data - INCLUDING opponents from other teams
+    player_names = {}
+    for ld in league_data:
+        player_names[ld["player_id"]] = ld["player_name"]
+    
+    roster = [{"player_id": pid, "player_name": player_names.get(pid, f"Player {pid}")} 
+              for pid in roster_player_ids]
+    
+    # Get team's match history
+    matches = []
+    for assignment in roster_assignments:
+        player_id = assignment["player_id"]
+        event = assignment["event"]
+        opponent_player_id = assignment["opponent_player_id"]
+        team_opponent_id = assignment.get("team_opponent")
+        
+        # Determine opponent info
+        if opponent_player_id == "Avg":
+            opponent_info = "Society Average"
+            opponent_score = None  # We'll calculate society average later if needed
+        else:
+            # Get opponent's name from league data
+            opponent_name = player_names.get(opponent_player_id, f"Player {opponent_player_id}")
+            if team_opponent_id:
+                # Get opponent team name
+                opponent_team_name = "Unknown Team"
+                for tid, tinfo in teams.items():
+                    if tid == team_opponent_id:
+                        opponent_team_name = tinfo["team_name"]
+                        break
+                opponent_info = f"{opponent_name} ({opponent_team_name})"
+            else:
+                opponent_info = opponent_name
+            
+            # Get opponent's score for this event
+            opponent_score = None
+            for ld in league_data:
+                if ld["player_id"] == opponent_player_id and ld["event_id"] == event:
+                    opponent_score = ld["score"]
+                    break
+        
+        # Get player's score for this event
+        player_score = None
+        for ld in league_data:
+            if ld["player_id"] == player_id and ld["event_id"] == event:
+                player_score = ld["score"]
+                break
+        
+        # Calculate match result
+        result = "DNP"
+        if player_score is not None:
+            if opponent_player_id == "Avg":
+                # Calculate society average for this event (rounded down)
+                event_scores = [ld["score"] for ld in league_data if ld["event_id"] == event and ld["score"] is not None]
+                if event_scores:
+                    society_avg = int(sum(event_scores) / len(event_scores))  # Rounded down to nearest integer
+                    opponent_score = society_avg
+                    # In golf, LOWER score is BETTER
+                    if player_score < society_avg:
+                        result = "Win"
+                    elif player_score > society_avg:
+                        result = "Loss"
+                    else:
+                        result = "Tie"
+                else:
+                    result = "vs Society Avg"
+                    opponent_score = None
+            elif opponent_score is not None:
+                # In golf, LOWER score is BETTER
+                if player_score < opponent_score:
+                    result = "Win"
+                elif player_score > opponent_score:
+                    result = "Loss"
+                else:
+                    result = "Tie"
+            else:
+                result = "Win"  # Opponent DNP, player played = player wins
+        else:
+            # Player DNP
+            if opponent_player_id == "Avg":
+                # Calculate society average for this event (rounded down)
+                event_scores = [ld["score"] for ld in league_data if ld["event_id"] == event and ld["score"] is not None]
+                if event_scores:
+                    opponent_score = int(sum(event_scores) / len(event_scores))  # Rounded down to nearest integer
+                else:
+                    opponent_score = None
+                result = "Loss"  # DNP vs Society Avg = Loss
+            elif opponent_score is not None:
+                result = "Loss"  # Opponent played, player DNP = player loses
+            else:
+                result = "DNP"  # Both players DNP = DNP
+        
+        matches.append({
+            "event": event,
+            "player_id": player_id,
+            "player_name": player_names.get(player_id, f"Player {player_id}"),
+            "opponent": opponent_info,
+            "player_score": player_score,
+            "opponent_score": opponent_score,
+            "result": result
+        })
+    
+    # Calculate team record
+    standings = calculate_team_standings(season_id)
+    team_record = None
+    for team_id_standing, stats in standings:
+        if team_id_standing == team_id:
+            team_record = stats
+            break
+    
+    return render_template("team_detail.html",
+                         team=team_info,
+                         roster=roster,
+                         matches=matches,
+                         team_record=team_record,
+                         selected_season=season_id,
+                         seasons=team_seasons)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
